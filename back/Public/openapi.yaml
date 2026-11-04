@@ -1,0 +1,704 @@
+openapi: 3.0.3
+info:
+  title: La Pioche
+  version: 1.0.0
+  description: |
+    API de gestion d'une ludothèque : jeux, adhérent·es et emprunts.
+
+    Règles métier :
+    - un jeu est disponible s'il n'a aucun emprunt sans date de retour effective ;
+    - la durée d'un emprunt est de 14 jours ;
+    - un jeu déjà emprunté ne peut pas être emprunté une seconde fois.
+
+    Authentification : toutes les routes, sauf `/auth/register` et `/auth/login`,
+    exigent un jeton JWT dans l'en-tête `Authorization: Bearer <jeton>`. On l'obtient
+    en créant un compte ou en se connectant ; il est valable 24 heures. Sans jeton valide,
+    l'API répond `401 Unauthorized`. Dans cette page, le bouton « Authorize » mémorise le jeton.
+
+    Les dates sont au format ISO 8601, en UTC. Toutes les erreurs ont le même
+    format : `{"error": true, "reason": "..."}`.
+servers:
+  - url: /
+security:
+  - bearerAuth: []
+tags:
+  - name: Auth
+    description: Comptes et connexion
+  - name: Games
+    description: Jeux de la ludothèque
+  - name: Members
+    description: Adhérent·es
+  - name: Loans
+    description: Emprunts
+paths:
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Créer un compte
+      description: Crée un compte et connecte directement son titulaire.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Credentials"
+      responses:
+        "201":
+          description: Compte créé. Le jeton permet d'appeler les autres routes.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: "Corps invalide : adresse e-mail incorrecte ou mot de passe de moins de 8 caractères."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Un compte existe déjà avec cette adresse e-mail (casse ignorée).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Se connecter
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Credentials"
+      responses:
+        "200":
+          description: Connexion réussie.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: >-
+            Adresse e-mail ou mot de passe incorrect. Le message est le même quand
+            l'adresse est inconnue, pour ne pas révéler quels comptes existent.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Utilisateur connecté
+      responses:
+        "200":
+          description: Le compte associé au jeton.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /games:
+    get:
+      tags: [Games]
+      summary: Lister et rechercher les jeux
+      description: >-
+        Sans paramètre, renvoie tous les jeux. Les paramètres sont facultatifs
+        et combinables : un jeu doit satisfaire tous ceux qui sont fournis.
+      parameters:
+        - name: q
+          in: query
+          description: Ne garde que les jeux dont le titre contient ce texte, sans tenir compte de la casse.
+          schema:
+            type: string
+          example: cat
+        - name: players
+          in: query
+          description: Ne garde que les jeux jouables à ce nombre de joueur·ses.
+          schema:
+            type: integer
+            minimum: 1
+          example: 4
+        - name: maxDuration
+          in: query
+          description: Ne garde que les jeux dont la durée est inférieure ou égale à cette valeur, en minutes.
+          schema:
+            type: integer
+            minimum: 1
+          example: 60
+        - name: available
+          in: query
+          description: "`true` ne garde que les jeux disponibles, `false` que les jeux empruntés."
+          schema:
+            type: boolean
+          example: true
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "200":
+          description: Les jeux correspondants, avec leur disponibilité.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Game"
+        "400":
+          description: Un paramètre numérique n'est pas un entier strictement positif, ou `available` n'est ni `true` ni `false`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    post:
+      tags: [Games]
+      summary: Créer un jeu
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateGame"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "201":
+          description: Jeu créé.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Game"
+        "400":
+          description: >-
+            Corps invalide : titre vide, nombre de joueur·ses ou durée inférieur
+            à 1, ou `minPlayers` supérieur à `maxPlayers`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /games/{gameID}:
+    get:
+      tags: [Games]
+      summary: Consulter un jeu
+      parameters:
+        - $ref: "#/components/parameters/GameID"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "200":
+          description: Le jeu demandé.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Game"
+        "400":
+          description: Identifiant mal formé (ce n'est pas un UUID).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Aucun jeu avec cet identifiant.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    put:
+      tags: [Games]
+      summary: Modifier un jeu
+      description: Remplace toutes les informations du jeu. Les règles de validation sont celles de la création.
+      parameters:
+        - $ref: "#/components/parameters/GameID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateGame"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "200":
+          description: Le jeu mis à jour.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Game"
+        "400":
+          description: Identifiant mal formé ou corps invalide.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Aucun jeu avec cet identifiant.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      tags: [Games]
+      summary: Supprimer un jeu
+      description: Refusé si le jeu a au moins un emprunt, en cours ou terminé.
+      parameters:
+        - $ref: "#/components/parameters/GameID"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "204":
+          description: Jeu supprimé.
+        "400":
+          description: Identifiant mal formé (ce n'est pas un UUID).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Aucun jeu avec cet identifiant.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Le jeu a au moins un emprunt.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /members:
+    get:
+      tags: [Members]
+      summary: Lister les adhérent·es
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "200":
+          description: Tous les adhérent·es.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Member"
+    post:
+      tags: [Members]
+      summary: Créer un·e adhérent·e
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMember"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "201":
+          description: Adhérent·e créé·e.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Member"
+        "400":
+          description: "Corps invalide : nom vide ou adresse e-mail incorrecte."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Un·e adhérent·e utilise déjà cette adresse e-mail.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /members/{memberID}:
+    get:
+      tags: [Members]
+      summary: Consulter un·e adhérent·e
+      parameters:
+        - $ref: "#/components/parameters/MemberID"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "200":
+          description: L'adhérent·e demandé·e.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Member"
+        "400":
+          description: Identifiant mal formé (ce n'est pas un UUID).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Aucun·e adhérent·e avec cet identifiant.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    put:
+      tags: [Members]
+      summary: Modifier un·e adhérent·e
+      description: Remplace le nom et l'adresse e-mail. Garder sa propre adresse n'est pas un conflit.
+      parameters:
+        - $ref: "#/components/parameters/MemberID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMember"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "200":
+          description: L'adhérent·e mis·e à jour.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Member"
+        "400":
+          description: Identifiant mal formé ou corps invalide.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Aucun·e adhérent·e avec cet identifiant.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Un·e autre adhérent·e utilise déjà cette adresse e-mail.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      tags: [Members]
+      summary: Supprimer un·e adhérent·e
+      description: Refusé si l'adhérent·e a au moins un emprunt, en cours ou terminé.
+      parameters:
+        - $ref: "#/components/parameters/MemberID"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "204":
+          description: Adhérent·e supprimé·e.
+        "400":
+          description: Identifiant mal formé (ce n'est pas un UUID).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Aucun·e adhérent·e avec cet identifiant.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: L'adhérent·e a au moins un emprunt.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /members/{memberID}/loans:
+    get:
+      tags: [Members]
+      summary: Lister les emprunts d'un·e adhérent·e
+      description: Emprunts rendus ou non, du plus ancien au plus récent. La liste peut être vide.
+      parameters:
+        - $ref: "#/components/parameters/MemberID"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "200":
+          description: Les emprunts de l'adhérent·e.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Loan"
+        "400":
+          description: Identifiant mal formé (ce n'est pas un UUID).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Aucun·e adhérent·e avec cet identifiant.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /loans:
+    post:
+      tags: [Loans]
+      summary: Emprunter un jeu
+      description: >-
+        Crée un emprunt à la date du jour. La date de retour prévue est fixée
+        14 jours plus tard.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLoan"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "201":
+          description: Emprunt créé.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Loan"
+        "404":
+          description: Le jeu ou l'adhérent·e n'existe pas.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Le jeu est déjà emprunté.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /loans/overdue:
+    get:
+      tags: [Loans]
+      summary: Lister les emprunts en retard
+      description: Emprunts non rendus dont la date de retour prévue est dépassée, du plus en retard au moins en retard.
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "200":
+          description: Les emprunts en retard. La liste peut être vide.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Loan"
+  /loans/{loanID}/return:
+    post:
+      tags: [Loans]
+      summary: Rendre un jeu
+      description: Renseigne la date de retour effective avec la date du jour. Le jeu redevient disponible.
+      parameters:
+        - name: loanID
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "200":
+          description: L'emprunt mis à jour.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Loan"
+        "400":
+          description: Identifiant mal formé (ce n'est pas un UUID).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Aucun emprunt avec cet identifiant.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: L'emprunt a déjà été rendu.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  responses:
+    Unauthorized:
+      description: "Jeton absent, invalide ou expiré : il faut se (re)connecter."
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: true
+            reason: Authentication required
+  parameters:
+    GameID:
+      name: gameID
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    MemberID:
+      name: memberID
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  schemas:
+    Credentials:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          example: staff@example.com
+        password:
+          type: string
+          format: password
+          minLength: 8
+          description: 8 caractères minimum à l'inscription.
+          example: correct-horse
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+          example: staff@example.com
+    AuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: "JWT à envoyer dans `Authorization: Bearer <token>`."
+        expiresAt:
+          type: string
+          format: date-time
+          description: Fin de validité du jeton (24 heures après sa création).
+        user:
+          $ref: "#/components/schemas/User"
+    Game:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+          example: Catan
+        minPlayers:
+          type: integer
+          example: 3
+        maxPlayers:
+          type: integer
+          example: 4
+        durationMinutes:
+          type: integer
+          example: 90
+        isAvailable:
+          type: boolean
+          description: Calculé à partir des emprunts, jamais stocké.
+          example: true
+    CreateGame:
+      type: object
+      required: [title, minPlayers, maxPlayers, durationMinutes]
+      properties:
+        title:
+          type: string
+          example: Catan
+        minPlayers:
+          type: integer
+          minimum: 1
+          example: 3
+        maxPlayers:
+          type: integer
+          minimum: 1
+          example: 4
+        durationMinutes:
+          type: integer
+          minimum: 1
+          example: 90
+    Member:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: Camille
+        email:
+          type: string
+          format: email
+          example: camille@example.com
+    CreateMember:
+      type: object
+      required: [name, email]
+      properties:
+        name:
+          type: string
+          example: Camille
+        email:
+          type: string
+          format: email
+          example: camille@example.com
+    CreateLoan:
+      type: object
+      required: [gameID, memberID]
+      properties:
+        gameID:
+          type: string
+          format: uuid
+        memberID:
+          type: string
+          format: uuid
+    Loan:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        gameID:
+          type: string
+          format: uuid
+        memberID:
+          type: string
+          format: uuid
+        borrowedAt:
+          type: string
+          format: date-time
+          example: "2026-10-20T09:54:53Z"
+        dueAt:
+          type: string
+          format: date-time
+          example: "2026-11-03T09:54:53Z"
+        returnedAt:
+          type: string
+          format: date-time
+          nullable: true
+    Error:
+      type: object
+      properties:
+        error:
+          type: boolean
+          example: true
+        reason:
+          type: string
+          example: Game not found

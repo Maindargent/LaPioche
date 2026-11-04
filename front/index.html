@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>La Pioche - Ludothèque</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>La Pioche</h1>
+    <nav aria-label="Sections">
+      <a href="#games" data-tab="games">Jeux</a>
+      <a href="#members" data-tab="members">Adhérent·es</a>
+    </nav>
+    <a class="docs-link" id="docs-link" href="http://localhost:8081/">Documentation API</a>
+  </header>
+
+  <main>
+    <section id="games" class="tab" hidden>
+      <div class="section-head">
+        <h2>Jeux</h2>
+        <button type="button" id="add-game" class="primary">Ajouter un jeu</button>
+      </div>
+      <p id="games-empty" class="empty" hidden>La ludothèque ne contient aucun jeu pour le moment. Cliquez sur « Ajouter un jeu » pour créer le premier.</p>
+      <ul id="games-list" class="cards"></ul>
+    </section>
+
+    <section id="members" class="tab" hidden>
+      <div class="section-head">
+        <h2>Adhérent·es</h2>
+        <button type="button" id="add-member" class="primary">Ajouter un·e adhérent·e</button>
+      </div>
+      <p id="members-empty" class="empty" hidden>Aucun·e adhérent·e pour le moment. Cliquez sur « Ajouter un·e adhérent·e » pour créer le premier ou la première.</p>
+      <ul id="members-list" class="rows"></ul>
+    </section>
+  </main>
+
+  <dialog id="game-dialog">
+    <form method="dialog" id="game-form" novalidate>
+      <h2>Ajouter un jeu</h2>
+      <label>Titre <input name="title" required></label>
+      <div class="pair">
+        <label>Joueur·ses min <input type="number" name="minPlayers" min="1" step="1" required></label>
+        <label>Joueur·ses max <input type="number" name="maxPlayers" min="1" step="1" required></label>
+      </div>
+      <label>Durée (minutes) <input type="number" name="durationMinutes" min="1" step="1" required></label>
+      <p class="form-error" role="alert" hidden></p>
+      <div class="actions">
+        <button type="button" data-cancel>Annuler</button>
+        <button type="submit" class="primary">Enregistrer</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="member-dialog">
+    <form method="dialog" id="member-form" novalidate>
+      <h2>Ajouter un·e adhérent·e</h2>
+      <label>Nom <input name="name" required></label>
+      <label>Adresse e-mail <input type="email" name="email" required></label>
+      <p class="form-error" role="alert" hidden></p>
+      <div class="actions">
+        <button type="button" data-cancel>Annuler</button>
+        <button type="submit" class="primary">Enregistrer</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="borrow-dialog">
+    <form method="dialog" id="borrow-form">
+      <h2 id="borrow-dialog-title"></h2>
+      <label>Adhérent·e
+        <select name="memberID" required></select>
+      </label>
+      <p class="hint">Retour prévu dans 14 jours.</p>
+      <p class="form-error" role="alert" hidden></p>
+      <div class="actions">
+        <button type="button" data-cancel>Annuler</button>
+        <button type="submit" class="primary">Emprunter</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toasts" role="status" aria-live="polite"></div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

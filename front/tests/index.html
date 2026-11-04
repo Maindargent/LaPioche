@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>Tests du front</title>
+  <style>
+    body { font: 15px/1.5 system-ui, sans-serif; margin: 24px; }
+    ul { list-style: none; padding: 0; }
+    li { padding: 2px 0; }
+    .pass { color: #1d6b3a; }
+    .fail { color: #9b1c1c; font-weight: 600; }
+    #summary { font-size: 1.2rem; }
+  </style>
+</head>
+<body>
+  <h1>Tests du front</h1>
+  <p id="summary">Exécution…</p>
+  <ul id="results"></ul>
+  <script type="module">
+    import { run } from "./runner.js";
+    import "./api.test.js";
+    import "./app.test.js";
+    await run();
+  </script>
+</body>
+</html>

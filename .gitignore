@@ -1,0 +1,32 @@
+# SwiftPM / build
+.build/
+.swiftpm/
+Packages/
+*.xcodeproj
+*.xcworkspace
+
+# Xcode
+xcuserdata/
+DerivedData/
+*.xcuserstate
+
+# Vapor
+.env
+.env.*
+!.env.example
+
+# SQLite (development database)
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.db
+
+# Logs
+*.log
+
+# macOS
+.DS_Store
+
+# Editors
+.vscode/
+.idea/
