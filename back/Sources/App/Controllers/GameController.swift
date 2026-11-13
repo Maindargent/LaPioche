@@ -24,8 +24,11 @@ struct GameController: RouteCollection {
         try dto.ensureConsistentPlayerCount()
 
         let game = dto.toModel()
-        try await game.save(on: req.db)
-        return try await game.toDTO().encodeResponse(for: req)
+        try await game.create(on: req.db)
+        return try await game.toDTO().encodeResponse(
+            status: .created,
+            for: req
+        )
     }
 
     @Sendable
@@ -42,7 +45,7 @@ struct GameController: RouteCollection {
             .with(\.$loans)
             .first()
         else {
-            throw Abort(.internalServerError, reason: "Game not found")
+            throw Abort(.notFound, reason: "Game not found")
         }
         return game
     }

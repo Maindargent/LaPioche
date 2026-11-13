@@ -14,6 +14,8 @@ struct LoanController: RouteCollection {
         guard let game = try await Game.find(dto.gameID, on: req.db) else {
             throw Abort(.notFound, reason: "Game not found")
         }
+        // ici il faudra test si le jeu a déjà un emprunt actif :
+        // throw Abort(.conflict, reason: "Game is already borrowed")
         guard let member = try await Member.find(dto.memberID, on: req.db) else {
             throw Abort(.notFound, reason: "Member not found")
         }
