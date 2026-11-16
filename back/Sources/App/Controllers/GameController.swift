@@ -51,27 +51,6 @@ struct GameController: RouteCollection {
         }
         return game
     }
-    
-//    @Sendable
-//    func update(req: Request) async throws -> GameDTO {
-//        guard let id = req.parameters.get("gameID", as: UUID.self) else {
-//            throw Abort(.notFound, reason: "invalid game id")
-//        }
-//        
-//        guard let game = try await Game.find(id, on: req.db) else {
-//            throw Abort(.notFound, reason: "game not found")
-//        }
-//        let newGame = try req.content.decode(GameDTO.self)
-//        
-//        guard !newGame.title.isEmpty else {
-//            throw Abort(.badRequest, reason: "title is mandatory")
-//        }
-//        
-//        game.title = newGame.title
-//        
-//        try await game.update(on: req.db)
-//        return game.toDTO()
-//    }
 
     @Sendable
     func update(req: Request) async throws -> GameDTO {

@@ -35,6 +35,27 @@
       <ul id="members-list" class="rows"></ul>
     </section>
   </main>
+  
+  <dialog id="edit-member-dialog">
+    <form method="dialog" id="edit-member-form">
+      <h2>Modifier un·e adhérent·e</h2>
+
+      <label>Nom
+        <input name="name" required>
+      </label>
+
+      <label>Adresse e-mail
+        <input name="email" type="email" required>
+      </label>
+
+      <p class="form-error" role="alert" hidden></p>
+
+      <div class="actions">
+        <button type="button" data-cancel>Annuler</button>
+        <button type="submit" class="primary">Enregistrer</button>
+      </div>
+    </form>
+  </dialog>
 
   <dialog id="game-dialog">
     <form method="dialog" id="game-form" novalidate>
