@@ -106,6 +106,14 @@ function gameCard(game) {
   if (game.isAvailable) {
     actions.append(button("Emprunter", () => openBorrowDialog(game), "primary"));
   }
+    
+    actions.append(
+      button("Modifier", () => openEditDialog(game))
+    );
+    
+    actions.append(
+        button("Supprimer", () => deleteGame(game))
+    );
 
   return el(
     "li",
@@ -133,6 +141,52 @@ bindSubmit(gameDialog, gameForm, (data) =>
     durationMinutes: Number(data.get("durationMinutes")),
   }),
 );
+
+// --- Modifier --------------------------------------------------------------
+
+const editGameDialog = $("#edit-game-dialog");
+const editGameForm = $("#edit-game-form");
+
+let editingGame = null;
+
+function openEditDialog(game) {
+  editingGame = game;
+
+  editGameForm.elements.title.value = game.title;
+  editGameForm.elements.minPlayers.value = game.minPlayers;
+  editGameForm.elements.maxPlayers.value = game.maxPlayers;
+  editGameForm.elements.durationMinutes.value = game.durationMinutes;
+
+  showFormError(editGameDialog, null);
+  editGameDialog.showModal();
+}
+
+bindSubmit(editGameDialog, editGameForm, (data) =>
+  api.updateGame(editingGame.id, {
+    title: data.get("title").trim(),
+    minPlayers: Number(data.get("minPlayers")),
+    maxPlayers: Number(data.get("maxPlayers")),
+    durationMinutes: Number(data.get("durationMinutes")),
+  }),
+);
+
+// --- Supprimer --------------------------------------------------------------
+
+async function deleteGame(game) {
+  const confirmed = confirm(
+    `Voulez-vous vraiment supprimer le jeu "${game.title}" ?`
+  );
+
+  if (!confirmed) return;
+
+  await run(async () => {
+    await api.deleteGame(game.id);
+
+    toast(`Le jeu "${game.title}" a été supprimé.`);
+
+    await loadGames();
+  });
+}
 
 // --- Emprunts --------------------------------------------------------------
 
