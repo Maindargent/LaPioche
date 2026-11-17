@@ -77,6 +77,37 @@
       <div class="actions">
         <button type="button" data-cancel>Annuler</button>
         <button type="submit" class="primary">Emprunter</button>
+        <button type="button" class="primary">Modifier</button>
+        <button type="button" class="primary">Supprimer</button>
+      </div>
+    </form>
+  </dialog>
+  
+  <dialog id="edit-game-dialog">
+    <form method="dialog" id="edit-game-form">
+      <h2>Modifier un jeu</h2>
+
+      <label>Titre
+        <input name="title" required>
+      </label>
+
+      <label>Nombre minimum de joueurs
+        <input name="minPlayers" type="number" min="1" required>
+      </label>
+
+      <label>Nombre maximum de joueurs
+        <input name="maxPlayers" type="number" min="1" required>
+      </label>
+
+      <label>Durée (minutes)
+        <input name="durationMinutes" type="number" min="1" required>
+      </label>
+
+      <p class="form-error" role="alert" hidden></p>
+
+      <div class="actions">
+        <button type="button" data-cancel>Annuler</button>
+        <button type="submit" class="primary">Enregistrer</button>
       </div>
     </form>
   </dialog>

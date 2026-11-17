@@ -32,6 +32,7 @@ func configure(_ app: Application) async throws {
     app.migrations.add(CreateGame())
     app.migrations.add(CreateMember())
     app.migrations.add(CreateLoan())
+    app.migrations.add(CreateMockGames())
     try await app.autoMigrate()
 
     try routes(app)
