@@ -1,5 +1,6 @@
 @testable import App
 import XCTVapor
+import Testing
 
 final class MemberTests: XCTestCase {
     func testCreateMemberReturnsCreated() async throws {
@@ -42,4 +43,17 @@ final class MemberTests: XCTestCase {
             })
         }
     }
+    
+    func testDeleteMember() async throws{
+        try await withApp { app in
+            let member = try await createMember(app)
+            
+            let memberID = try XCTUnwrap(member.id).uuidString
+            
+            try await app.test(.DELETE, "members/\(memberID)", afterResponse: { res async throws in
+                            #expect(res.status == .noContent)
+                        })
+        }
+    }
 }
+

@@ -103,10 +103,15 @@ function gameCard(game) {
     : el("span", { class: "badge busy" }, "Emprunté");
 
   const actions = el("div", { class: "actions" });
-  if (game.isAvailable) {
-    actions.append(button("Emprunter", () => openBorrowDialog(game), "primary"));
-  }
-    
+    if (game.isAvailable) {
+      actions.append(
+        button("Emprunter", () => openBorrowDialog(game), "primary")
+      );
+    } else {
+        actions.append(
+              button("Rendre", () => returnGame(game), "primary")
+            );
+          }
     actions.append(
       button("Modifier", () => openEditDialog(game))
     );
@@ -141,6 +146,14 @@ bindSubmit(gameDialog, gameForm, (data) =>
     durationMinutes: Number(data.get("durationMinutes")),
   }),
 );
+
+async function returnGame(game) {
+  await run(async () => {
+    await api.returnLoanByGameId(game.id);
+    toast("Le jeu a bien été rendu.");
+    await loadGames();
+  });
+}
 
 // --- Modifier --------------------------------------------------------------
 
