@@ -170,7 +170,7 @@ bindSubmit(editGameDialog, editGameForm, (data) =>
   }),
 );
 
-// --- Supprimer --------------------------------------------------------------
+// --- Supprimer jeu--------------------------------------------------------------
 
 async function deleteGame(game) {
   const confirmed = confirm(
@@ -225,24 +225,75 @@ async function loadMembers() {
 }
 
 function memberRow(member) {
-  return el(
-    "li",
-    { class: "row" },
-    el("div", { class: "row-main" }, el("p", {}, el("strong", {}, member.name)), el("p", { class: "meta" }, member.email)),
-  );
+    const actions = el("div", { class: "actions" });
+    
+    actions.append(
+                   button("Modifier", () => openEditMemberDialog(member))
+                   );
+    
+    actions.append(
+                   button("Supprimer", () => deleteMember(member))
+                   );
+    
+    return el(
+              "li",
+              { class: "row" },
+              el("div", { class: "row-main" }, el("p", {}, el("strong", {}, member.name)), el("p", { class: "meta" }, member.email)),
+              actions
+              );
 }
 
 const memberDialog = $("#member-dialog");
 const memberForm = $("#member-form");
 
 $("#add-member").addEventListener("click", () => {
-  memberForm.reset();
-  showFormError(memberDialog, null);
-  memberDialog.showModal();
+    memberForm.reset();
+    showFormError(memberDialog, null);
+    memberDialog.showModal();
 });
 
 bindSubmit(memberDialog, memberForm, (data) =>
-  api.createMember({ name: data.get("name").trim(), email: data.get("email").trim() }),
-);
+           api.createMember({ name: data.get("name").trim(), email: data.get("email").trim() }),
+           );
 
 refresh();
+
+const editMemberDialog = $("#edit-member-dialog");
+const editMemberForm = $("#edit-member-form");
+
+let editingMember = null;
+
+function openEditMemberDialog(member) {
+  editingMember = member;
+
+  editMemberForm.elements.name.value = member.name;
+  editMemberForm.elements.email.value = member.email;
+
+  showFormError(editMemberDialog, null);
+  editMemberDialog.showModal();
+}
+
+bindSubmit(editMemberDialog, editMemberForm, (data) =>
+  api.updateMember(editingMember.id, {
+    name: data.get("name").trim(),
+    email: data.get("email").trim(),
+  }),
+);
+
+// --- supprime membre -----------------------------------------------------------
+
+async function deleteMember(member) {
+  const confirmed = confirm(
+    `Voulez-vous vraiment supprimer l'adhérent·e "${member.name}" ?`
+  );
+
+  if (!confirmed) return;
+
+  await run(async () => {
+    await api.deleteMember(member.id);
+
+    toast(`L'adhérent·e "${member.name}" a été supprimé·e.`);
+
+    await loadMembers();
+  });
+}
