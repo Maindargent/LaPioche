@@ -135,4 +135,15 @@ final class LoanTests: XCTestCase {
             }
         }
     }
+    
+    func testGetGamesEmpty() async throws {
+        try await withApp { app in
+            try await Game.query(on: app.db).delete()
+            try await app.test(.GET, "games") { res async throws in
+                XCTAssertEqual(res.status, .ok)
+                let games = try res.content.decode([GameDTO].self)
+                XCTAssertTrue(games.isEmpty)
+            }
+        }
+    }
 }
