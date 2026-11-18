@@ -241,6 +241,9 @@ function memberRow(member) {
     const actions = el("div", { class: "actions" });
     
     actions.append(
+            button("Emprunts", () => openMemberLoansDialog(member))
+        );
+    actions.append(
                    button("Modifier", () => openEditMemberDialog(member))
                    );
     
@@ -254,6 +257,63 @@ function memberRow(member) {
               el("div", { class: "row-main" }, el("p", {}, el("strong", {}, member.name)), el("p", { class: "meta" }, member.email)),
               actions
               );
+}
+
+const memberLoansDialog = $("#member-loans-dialog");
+
+async function openMemberLoansDialog(member) {
+  await run(async () => {
+      const [loans, games] = await Promise.all([
+            api.getMemberLoans(member.id),
+            api.listGames()
+          ]);
+      
+      const gamesMap = new Map(games.map(g => [g.id, g.title]));
+      
+
+    $("#member-loans-title").textContent = `Emprunts de ${member.name}`;
+    
+    const listContainer = $("#member-loans-list");
+    if (loans.length === 0) {
+      listContainer.replaceChildren(el("p", { class: "empty" }, "Aucun emprunt enregistré pour cet·te adhérent·e."));
+    } else {
+        const now = new Date();
+        
+      listContainer.replaceChildren(
+        ...loans.map((loan) => {
+            const gameTitle = gamesMap.get(loan.gameID) ?? "Jeu inconnu";
+                      
+                      let badgeClass = "badge";
+                      let statusText = "";
+                      
+                      if (loan.returnedAt) {
+                        badgeClass += " ok";
+                        statusText = `Rendu le ${formatDate(loan.returnedAt)}`;
+                      } else {
+                        const dueDate = new Date(loan.dueAt);
+                        if (now > dueDate) {
+                          badgeClass += " busy";
+                          statusText = `En retard (à rendre le ${formatDate(loan.dueAt)})`;
+                        } else {
+                          badgeClass += " ok";
+                          statusText = `En cours (à rendre le ${formatDate(loan.dueAt)})`;
+                        }
+                      }
+
+                      const badge = el("span", { class: badgeClass }, statusText);
+            
+          return el("li", { class: "row" },
+            el("div", { class: "row-main" },
+               el("p", {}, el("strong", {}, gameTitle)),
+               el("p", { class: "meta" }, `Emprunté le ${formatDate(loan.borrowedAt)}`)
+            ),
+                    badge
+          );
+        })
+      );
+    }
+    memberLoansDialog.showModal();
+  });
 }
 
 const memberDialog = $("#member-dialog");

@@ -9,6 +9,7 @@ struct MemberController: RouteCollection {
         members.get(":memberID", use: show)
         members.put(":memberID", use: update)
         members.delete(":memberID", use: delete)
+        members.get(":memberID", "loans", use: getMemberLoans)
     }
 
     @Sendable
@@ -96,5 +97,23 @@ struct MemberController: RouteCollection {
         try await member.delete(on: req.db)
 
         return Response(status: .noContent)
+    }
+    
+    @Sendable
+    func getMemberLoans(req: Request) async throws -> Response {
+        let memberID = try req.parameters.require("memberID", as: UUID.self)
+        print("DEBUG: On cherche les prêts pour l'ID -> \(memberID)")
+        
+        guard let _ = try await Member.find(memberID, on: req.db) else {
+            print("DEBUG: ALERTE -> Aucun membre trouvé avec cet ID en base !")
+                    throw Abort(.notFound, reason: "Member not found")
+                }
+        
+        let loans = try await Loan.query(on: req.db)
+                    .filter(\.$member.$id == memberID)
+                    .all()
+        
+        let loanDTOs = loans.map { $0.toDTO() }
+                return try await loanDTOs.encodeResponse(for: req)
     }
 }
