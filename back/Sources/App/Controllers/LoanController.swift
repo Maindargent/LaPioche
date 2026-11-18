@@ -6,6 +6,8 @@ struct LoanController: RouteCollection {
         let loans = routes.grouped("loans")
         loans.post(use: create)
         loans.post("game", ":gameID", "return", use: returnLoanByGame)
+        
+        routes.get("members", ":memberID", "loans", use: getMemberLoans)
     }
 
     @Sendable
@@ -55,5 +57,21 @@ struct LoanController: RouteCollection {
         try await activeLoan.save(on: req.db)
         
         return try await activeLoan.toDTO().encodeResponse(for: req)
+    }
+    
+    @Sendable
+    func getMemberLoans(req: Request) async throws -> Response {
+        let memberID = try req.parameters.require("memberID", as: UUID.self)
+        
+        guard let member = try await Member.find(memberID, on: req.db) else {
+                    throw Abort(.notFound, reason: "Member not found")
+                }
+        
+        let loans = try await Loan.query(on: req.db)
+                    .filter(\.$member.$id == memberID)
+                    .all()
+        
+        let loanDTOs = loans.map { $0.toDTO() }
+                return try await loanDTOs.encodeResponse(for: req)
     }
 }
