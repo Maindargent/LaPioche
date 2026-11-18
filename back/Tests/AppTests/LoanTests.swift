@@ -94,4 +94,45 @@ final class LoanTests: XCTestCase {
             }
         }
     }
+    
+    func testReturnGameSuccess() async throws {
+        try await withApp { app in
+            let game = try await createGame(app)
+            let member = try await createMember(app)
+            let gameID = try XCTUnwrap(game.id)
+            
+            try await borrow(app, gameID: gameID, memberID: try XCTUnwrap(member.id)) { _ in }
+            
+            try await app.test(.POST, "loans/game/\(gameID)/return") { res async throws in
+                XCTAssertEqual(res.status, .ok)
+                
+                let loan = try res.content.decode(LoanDTO.self)
+                XCTAssertNotNil(loan.returnedAt)
+            }
+            
+            try await app.test(.GET, "games/\(gameID)") { res async throws in
+                let updatedGame = try res.content.decode(GameDTO.self)
+                XCTAssertTrue(updatedGame.isAvailable)
+            }
+        }
+    }
+
+    func testReturnGameWithoutActiveLoanReturnsError() async throws {
+        try await withApp { app in
+            let game = try await createGame(app)
+            let gameID = try XCTUnwrap(game.id)
+            
+            struct ErrorResponse: Decodable {
+                            let error: Bool
+                            let reason: String
+                        }
+            
+            try await app.test(.POST, "loans/game/\(gameID)/return") { res async throws in
+                XCTAssertEqual(res.status, .notFound)
+                
+                let errorResponse = try res.content.decode(ErrorResponse.self)
+                XCTAssertEqual(errorResponse.reason, "Active loan not found for this game")
+            }
+        }
+    }
 }
